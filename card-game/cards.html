@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>8‑Card Audio Cue Game</title>
+  <style>
+    :root {
+      --bg: #0b1020;
+      --card: #121a33;
+      --card-hover: #162040;
+      --accent: #6ae1ff;
+      --good: #00d27a;
+      --bad: #ff4d67;
+      --text: #e7eefc;
+      --muted: #9db0d0;
+      --shadow: 0 10px 30px rgba(0, 0, 0, .3);
+      --radius: 16px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      height: 100%;
+    }
+
+    body {
+      margin: 0;
+      background: radial-gradient(1200px 600px at 70% -10%, #1a2450 0%, #0b1020 50%, #060a16 100%);
+      color: var(--text);
+      font: 15px/1.5 system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+      display: grid;
+      place-items: center;
+      padding: 28px;
+    }
+
+    .app {
+      width: min(980px, 100%);
+    }
+
+    .topbar {
+      display: grid;
+      grid-template-columns: 1fr auto auto;
+      gap: 12px;
+      align-items: center;
+      margin-bottom: 18px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(18px, 2.2vw, 24px);
+      letter-spacing: .3px;
+      color: var(--text);
+      font-weight: 700;
+    }
+
+    .btn {
+      appearance: none;
+      border: 1px solid rgba(255, 255, 255, .12);
+      background: linear-gradient(180deg, #1a2346, #0f1733);
+      color: var(--text);
+      padding: 10px 14px;
+      border-radius: 12px;
+      cursor: pointer;
+      box-shadow: var(--shadow);
+      transition: transform .06s ease, background .2s ease, border-color .2s ease;
+    }
+
+    .btn:hover {
+      transform: translateY(-1px);
+      background: linear-gradient(180deg, #1d2852, #111a39);
+    }
+
+    .btn:active {
+      transform: translateY(0);
+    }
+
+    .btn.secondary {
+      background: #0e142b;
+    }
+
+    .meta {
+      display: flex;
+      gap: 14px;
+      align-items: center;
+      color: var(--muted);
+    }
+
+    .pill {
+      border: 1px solid rgba(255, 255, 255, .1);
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, .04);
+    }
+
+    .prompt {
+      border: 1px solid rgba(255, 255, 255, .1);
+      border-radius: var(--radius);
+      background: linear-gradient(180deg, #0f1731, #0b1126);
+      padding: 14px 16px;
+      margin: 12px 0 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: var(--shadow);
+      gap: 10px;
+    }
+
+    .prompt strong {
+      color: var(--accent);
+      letter-spacing: .3px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+    }
+
+    .card {
+      user-select: none;
+      padding: 18px;
+      border-radius: var(--radius);
+      background: linear-gradient(180deg, #0f1732, #0b1228);
+      border: 1px solid rgba(255, 255, 255, .08);
+      box-shadow: var(--shadow);
+      text-align: center;
+      cursor: pointer;
+      transition: transform .1s ease, background .2s ease, border-color .2s ease, box-shadow .2s ease;
+      min-height: 92px;
+      display: grid;
+      place-items: center;
+      position: relative;
+      outline: none;
+    }
+
+    .card:hover {
+      background: var(--card-hover);
+      transform: translateY(-2px);
+    }
+
+    .card:active {
+      transform: translateY(0);
+    }
+
+    .card[data-state="disabled"] {
+      pointer-events: none;
+      opacity: .6;
+    }
+
+    .card.correct {
+      border-color: rgba(0, 210, 122, .6);
+      box-shadow: 0 6px 18px rgba(0, 210, 122, .22);
+    }
+
+    .card.wrong {
+      border-color: rgba(255, 77, 103, .6);
+      box-shadow: 0 6px 18px rgba(255, 77, 103, .22);
+    }
+
+    .card .label {
+      font-size: clamp(16px, 2vw, 18px);
+      font-weight: 700;
+      letter-spacing: .2px;
+    }
+
+    .sr-only {
+      position: absolute;
+      left: -9999px;
+      top: auto;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+    }
+
+    .toast {
+      position: fixed;
+      inset: auto 0 20px 0;
+      display: grid;
+      place-items: center;
+      pointer-events: none;
+    }
+
+    .toast>div {
+      pointer-events: auto;
+      background: #0e152e;
+      border: 1px solid rgba(255, 255, 255, .1);
+      border-radius: 12px;
+      padding: 10px 14px;
+      box-shadow: var(--shadow);
+      display: none;
+      gap: 10px;
+      align-items: center;
+      color: var(--text);
+    }
+
+    .toast.show>div {
+      display: inline-flex;
+    }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      background: var(--good);
+    }
+
+    @media (max-width: 700px) {
+      .grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="app" role="application" aria-label="8-Card Audio Cue Game">
+    <div class="topbar">
+      <h1>🎴 8‑Card Audio Cue Game</h1>
+      <button class="btn" id="btnPlay" aria-label="Play the audio cue again" title="Play cue (Space)">▶︎ Play
+        cue</button>
+      <div class="meta" aria-live="polite">
+        <span class="pill" id="score">Score: 0</span>
+        <span class="pill" id="round">Round: 1</span>
+      </div>
+    </div>
+
+    <div class="prompt" id="prompt" aria-live="polite">
+      <div>
+        <span>Find:</span>
+        <strong id="targetWord">(…)</strong>
+      </div>
+      <div>
+        <button class="btn secondary" id="btnNext" title="New round (N)">Next ↻</button>
+      </div>
+    </div>
+
+    <div class="grid" id="grid" role="list" aria-label="Cards"></div>
+
+    <div class="toast" id="toast" aria-live="polite">
+      <div><span class="dot" id="dot"></span><span id="toastText">Nice!</span></div>
+    </div>
+  </div>
+
+  <script>
+    // --- Config -------------------------------------------------------------
+    // Replace this with your own items. The text shown is also the spoken cue.
+    const ITEM_BANK = [
+      'Apple', 'Banana', 'Grape', 'Orange', 'Lemon', 'Peach', 'Cherry', 'Pear',
+      'Pineapple', 'Mango', 'Kiwi', 'Melon', 'Plum', 'Apricot', 'Berry', 'Coconut'
+    ];
+
+    const CARDS_PER_ROUND = 8; // always 8 per your spec
+    const SPEECH_RATE = 1.0;    // 0.1–10
+    const SPEECH_PITCH = 1.0;   // 0–2
+    const SPEECH_LANG = 'en-US';
+
+    // --- State --------------------------------------------------------------
+    let currentSet = [];   // the 8 words on the table
+    let target = null;     // the correct answer word
+    let round = 1;
+    let score = 0;
+    let inputLocked = false; // avoid double-click spam during feedback
+
+    // --- Utilities ----------------------------------------------------------
+    const $ = sel => document.querySelector(sel);
+    const $$ = sel => [...document.querySelectorAll(sel)];
+
+    function shuffle(arr) {
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      return arr;
+    }
+
+    function pickN(arr, n) {
+      const copy = arr.slice();
+      shuffle(copy);
+      return copy.slice(0, n);
+    }
+
+    function speak(text) {
+      // Prefer the Web Speech API so you don't need audio files
+      if ('speechSynthesis' in window) {
+        const u = new SpeechSynthesisUtterance(text);
+        u.lang = SPEECH_LANG;
+        u.rate = SPEECH_RATE;
+        u.pitch = SPEECH_PITCH;
+        window.speechSynthesis.cancel(); // stop anything still speaking
+        window.speechSynthesis.speak(u);
+      } else {
+        console.warn('Speech Synthesis not supported in this browser.');
+      }
+    }
+
+    function toast(msg, good = true) {
+      const t = $('#toast');
+      const text = $('#toastText');
+      const dot = $('#dot');
+      text.textContent = msg;
+      dot.style.background = good ? 'var(--good)' : 'var(--bad)';
+      t.classList.add('show');
+      clearTimeout(t._timer);
+      t._timer = setTimeout(() => t.classList.remove('show'), 900);
+    }
+
+    // --- Game Logic ---------------------------------------------------------
+    function newRound() {
+      inputLocked = false;
+      // Build the 8‑card set
+      currentSet = pickN(ITEM_BANK, CARDS_PER_ROUND);
+      target = currentSet[Math.floor(Math.random() * currentSet.length)];
+
+      // Render
+      const grid = $('#grid');
+      grid.innerHTML = '';
+      currentSet.forEach((word, idx) => {
+        const card = document.createElement('button');
+        card.className = 'card';
+        card.role = 'listitem';
+        card.setAttribute('data-answer', word);
+        card.setAttribute('aria-label', `Card ${idx + 1}: ${word}`);
+        card.innerHTML = `<span class="label">${word}</span>`;
+        card.addEventListener('click', () => onPick(card));
+        card.addEventListener('keyup', (e) => { if (e.key === 'Enter' || e.key === ' ') onPick(card); });
+        grid.appendChild(card);
+      });
+
+      $('#targetWord').textContent = target;
+      $('#round').textContent = `Round: ${round}`;
+      // Play cue automatically on new round
+      setTimeout(() => speak(target), 250);
+      // Ensure first card is focusable on keyboard for accessibility
+      const first = grid.querySelector('.card');
+      if (first) first.focus();
+    }
+
+    function onPick(card) {
+      if (inputLocked) return;
+      inputLocked = true;
+      const guess = card.getAttribute('data-answer');
+      const isCorrect = guess === target;
+      if (isCorrect) {
+        card.classList.add('correct');
+        score += 1;
+        $('#score').textContent = `Score: ${score}`;
+        toast('Correct!', true);
+        // Brief pause then start next round
+        setTimeout(() => { round += 1; newRound(); }, 700);
+      } else {
+        card.classList.add('wrong');
+        toast('Try again', false);
+        // Unlock after short delay to allow another guess within same round
+        setTimeout(() => { card.classList.remove('wrong'); inputLocked = false; }, 400);
+      }
+    }
+
+    // --- Controls -----------------------------------------------------------
+    $('#btnPlay').addEventListener('click', () => speak(target));
+    $('#btnNext').addEventListener('click', () => { round += 1; newRound(); });
+
+    // Keyboard shortcuts: Space = replay cue, N = next round
+    window.addEventListener('keydown', (e) => {
+      if (e.target.closest('.card')) return; // don't steal focus when on a card
+      if (e.code === 'Space') { e.preventDefault(); speak(target); }
+      if (e.key.toLowerCase() === 'n') { e.preventDefault(); round += 1; newRound(); }
+    });
+
+    // Kick off the first round
+    newRound();
+  </script>
+</body>
+
+</html>
